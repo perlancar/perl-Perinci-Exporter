@@ -133,7 +133,7 @@ option (hashref), or option (prefixed with C<->).
 
 Example:
 
- do_export('f1', ':tag1', f2 => {impor option...}, -option => ...);
+ do_export('f1', ':tag1', f2 => {import option...}, -option => ...);
 
 Import options:
 
