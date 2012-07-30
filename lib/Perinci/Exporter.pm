@@ -120,7 +120,12 @@ Explicitly set target package to install the import() routine to.
 
 =item * default_wrap => 1 | 0 | HASH (default: 1)
 
-Set defaut wrapping behavior.
+Set defaut wrapping behavior. See 'wrap' import options in do_export().
+
+=item * default_on_clash => 'force' | 'bail' (default: 'force')
+
+Set defaut -on_clash behavior when exporting. See '-on_clash' options in
+do_export().
 
 =back
 
@@ -186,6 +191,8 @@ e.g. when your module adds this at the bottom:
 
  Perinci::Sub::Wrapper->wrap_all_subs;
 
+Default can be setup via install_import()'s 'default_wrap'.
+
 =back
 
 Options:
@@ -197,6 +204,8 @@ Options:
 If importer tries to import 'foo' when it already exists, the default is to
 force importing, without any warnings, like Exporter. Alternatively, you can
 also bail (dies), which can be more reliable/safe.
+
+Default can be setup via install_import()'s 'default_on_clash'.
 
 =back
 
@@ -293,5 +302,7 @@ are not available.
 =head1 SEE ALSO
 
 L<Perinci>
+
+L<Perinci::Sub::Wrapper>
 
 =cut
