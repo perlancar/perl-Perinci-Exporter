@@ -33,7 +33,7 @@ function metadata.
 
 =item * Export to a new name
 
-See the 'as', 'prefix', 'suffix' export options of the install_import()
+See the 'as', 'prefix', 'suffix' import options of the install_import()
 function.
 
 =item * Export wrapped function
@@ -50,8 +50,58 @@ So it is quite compatible with L<Exporter> and L<Exporter::Lite>.
 
 =back
 
-If your package has Rinci metadata, consider using this exporter for
-convenience and flexibility.
+If your package has Rinci metadata, consider using this exporter for convenience
+and flexibility.
+
+
+=head1 EXPORTING
+
+Most of the time, to set up exporter, you only need to just use() it in your
+module:
+
+ package YourModule;
+ use Perinci::Exporter;
+
+Perinci::Exporter will install an import() routine for your package. If you need
+to pass some exporting options:
+
+ use Perinci::Exporter default_wrap=>0, default_on_clash=>'bail';
+
+See install_import() for more details.
+
+
+=head1 IMPORTING
+
+B<Default exports>. Your module users can import functions in a variety of ways.
+The simplest form is:
+
+ use YourModule;
+
+which by default will export all functions marked with C<:default> tags. For
+example:
+
+ package YourModule;
+ use Perinci::Exporter;
+ our %SPEC;
+ $SPEC{f1} = { v=>1.1, tags=>[qw/default a/] };
+ sub   f1    { ... }
+ $SPEC{f2} = { v=>1.1, tags=>[qw/default a b/] };
+ sub   f2    { ... }
+ $SPEC{f3} = { v=>1.1, tags=>[qw/b c/] };
+ sub   f3    { ... }
+ 1;
+
+YourModule will by default export f1 and f2. If there are no functions tagged
+with C<default>, there will be no default exports. You can also supply the list
+of default functions via the C<default_exports> argument:
+
+ use Perinci::Exporter default_exports => [qw/f1 f2/];
+
+or via the @EXPORT package variable, a la Exporter.
+
+B<Exporting individual functions>. Users can
+
+See do_export() for more details.
 
 
 =head1 FUNCTIONS
@@ -68,6 +118,10 @@ Arguments:
 
 Explicitly set target package to install the import() routine to.
 
+=item * default_wrap => 1 | 0 | HASH (default: 1)
+
+Set defaut wrapping behavior.
+
 =back
 
 =head2 do_export(@args)
@@ -79,9 +133,9 @@ option (hashref), or option (prefixed with C<->).
 
 Example:
 
- do_export('f1', ':tag1', f2 => {export option...}, -option => ...);
+ do_export('f1', ':tag1', f2 => {impor option...}, -option => ...);
 
-Export options:
+Import options:
 
 =over 4
 
@@ -215,12 +269,17 @@ Note: L<Perinci::Sub::property::curry> is needed for this.
 
 =back
 
+=head2 What happens to functions that do not have metadata?
+
+They can still be exported; it's just that some extra information (like tags)
+are not available.
+
 
 =head1 TODO/IDEAS
 
 =over 4
 
-=item * Support combining tags.
+=item * Support combining tags?
 
  use YourModule qw(not(:tag1));
  use YourModule qw(and(:tag1,:tag2));
