@@ -20,23 +20,32 @@ use warnings;
 =head1 DESCRIPTION
 
 Perinci::Exporter is an exporter which can utilize information from L<Rinci>
-metadata.
+metadata. If your package has Rinci metadata, consider using this exporter for
+convenience and flexibility.
 
-Some features of this module:
+Features of this module:
 
 =over 4
 
+=item * List exportable routines from Rinci metadata
+
+All functions which have metadata are assumed to be exportable, so you do not
+have to list them again via @EXPORT or @EXPORT_OK.
+
 =item * Read tags from Rinci metadata
 
-You do not have to define export tags. The exporter can read tags from your
-function metadata.
+The exporter can read tags from your function metadata. You do not have to
+define export tags again.
 
-=item * Export to a new name
+=item * Export to different name
 
 See the 'as', 'prefix', 'suffix' import options of the install_import()
 function.
 
 =item * Export wrapped function
+
+This allows importer to get additional/modified behavior. See
+L<Perinci::Sub::Wrapper> for more about wrapping.
 
 =item * Export differently wrapped function to different importers
 
@@ -44,14 +53,15 @@ See some examples in L</"FAQ">.
 
 =item * Warn/bail on clash with existing function
 
+For testing or safety precaution.
+
 =item * Read @EXPORT and @EXPORT_OK
 
-So it is quite compatible with L<Exporter> and L<Exporter::Lite>.
+Perinci::Exporter reads these two package variables, so it is quite compatible
+with L<Exporter> and L<Exporter::Lite>. In fact, it is basically the same as
+Exporter::Lite if you do not have any metadata for your functions.
 
 =back
-
-If your package has Rinci metadata, consider using this exporter for convenience
-and flexibility.
 
 
 =head1 EXPORTING
@@ -97,9 +107,41 @@ of default functions via the C<default_exports> argument:
 
  use Perinci::Exporter default_exports => [qw/f1 f2/];
 
-or via the @EXPORT package variable, a la Exporter.
+or via the @EXPORT package variable, like in Exporter.
 
-B<Exporting individual functions>. Users can
+B<Exporting individual functions>. Users can import individual functions:
+
+ use YourModule qw(f1 f2);
+
+Each function can have import options, specified in a hashref:
+
+ use YourModule f1 => {wrap=>0}, f2=>{as=>'bar', args_as=>'array'};
+ # imports f1, bar
+
+B<Exporting groups of functions by tags>. Users can import groups of individual
+functions using tags. Tags are collected from function metadata, and written
+with a C<:> prefix (to differentiate them from function names). Each tag can
+also have import options:
+
+ use YourModule 'f3', ':a' => {prefix => 'a_'}; # imports f3, a_f1, a_f2
+
+B<Exporting to a different name>. As can be seen from previous examples, the
+'as' and 'prefix' (and also 'suffix') import options can be used to import
+subroutines using into a different name.
+
+B<Bailing on name clashes>. By default, importing will override existing names
+in the target package. To warn about this, users can set '-on_clash' to 'bail':
+
+ use YourModule 'f1', f2=>{as=>'f1'}, -on_clash=>'bail'; # dies, imports clash
+
+ use YourModule 'f1', -on_clash=>'bail'; # dies, f1 already exists
+ sub f1 { ... }
+
+B<Customizing wrapping options>. Users can specify custom wrapping options when
+importing functions. The wrapping will then be done just for them (as opposed to
+wrapped functions which are wrapped using default options, which will be shared
+among all importers not requesting custom wrapping). See some examples in
+L</"FAQ">.
 
 See do_export() for more details.
 
@@ -184,7 +226,7 @@ Examples:
 
  use YourModule foo => {}; # export wrapped, with default wrap options
  use YourModule foo => {wrap=>0}; # export unwrapped
- use YourModule foo => {convert=>{args_as=>'array'}}; # export with custom wrap
+ use YourModule foo => {args_as=>'array'}; # export with custom wrap
 
 Note that when set to 0, the exported function might already be wrapped anyway,
 e.g. when your module adds this at the bottom:
@@ -192,6 +234,18 @@ e.g. when your module adds this at the bottom:
  Perinci::Sub::Wrapper->wrap_all_subs;
 
 Default can be setup via install_import()'s 'default_wrap'.
+
+=item * args_as => STR
+
+This is a shortcut for specifying:
+
+ wrap => { convert => { args_as => STR } }
+
+=item * curry => STR
+
+This is a shortcut for specifying:
+
+ wrap => { convert => { curry => STR } }
 
 =back
 
@@ -280,8 +334,7 @@ Note: L<Perinci::Sub::property::curry> is needed for this.
 
 =head2 What happens to functions that do not have metadata?
 
-They can still be exported; it's just that some extra information (like tags)
-are not available.
+They can still be exported if you list them in @EXPORT or @EXPORT_OK.
 
 
 =head1 TODO/IDEAS
