@@ -1,10 +1,16 @@
 Revision history for Perinci-Exporter
 
+0.03     2013-08-12 (SHARYANTO)
+
+         - No functional changes. Update to no longer using
+           Perinci::Util::get_package_meta_accessor (removed).
+
+
 0.02     2012-08-10 (SHARYANTO)
 
-         No functional changes. Update dependencies.
+         - No functional changes. Update dependencies.
 
 
 0.01     2012-08-02 (SHARYANTO)
 
-         First release.
+         - First release.
