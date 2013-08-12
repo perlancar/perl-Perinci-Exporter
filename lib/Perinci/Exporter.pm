@@ -62,14 +62,11 @@ sub do_export {
     # collect what symbols are available for exporting, along with their tags,
     # etc.
 
-    require Perinci::Util;
-    my %exports;
-    my $res = Perinci::Util::get_package_meta_accessor(package => $source);
-    die "Can't get metadata accessor: $res->[0] - $res->[1]"
-        unless $res->[0] == 200;
-    my $ma = $res->[2];
+    no strict 'refs';
 
-    my $metas = $ma->get_all_metas($source);
+    my %exports;
+    my $metas = \%{"$source\::SPEC"};
+    $metas //= {};
     for my $k (keys %$metas) {
         # for now we limit ourselves to subs
         next unless $k =~ /\A\w+\z/;
@@ -77,8 +74,6 @@ sub do_export {
             tags => [@{ $metas->{$k}{tags} // []}],
         };
     }
-
-    no strict 'refs';
 
     for my $k (@{$expopts->{default_exports} // []},
                @{"$source\::EXPORT"}) {
@@ -226,7 +221,7 @@ sub do_export {
                         #    "because $ssym does not have metadata";
                     } else {
                         require Perinci::Sub::Wrapper;
-                        $res = Perinci::Sub::Wrapper::wrap_sub(
+                        my $res = Perinci::Sub::Wrapper::wrap_sub(
                             %$wrap,
                             sub  => \&{"$source\::$ssym"},
                             meta => $meta,
