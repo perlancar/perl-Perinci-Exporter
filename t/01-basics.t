@@ -7,7 +7,6 @@ use Test::Exception;
 use Test::More 0.96;
 
 use Perinci::Exporter qw();
-use Scalar::Util qw(blessed);
 
 package TestSource;
 
@@ -305,11 +304,13 @@ sub test_export {
             $args{preimport}->();
         }
 
+        my $recap;
+
         # import()
         @TestTarget::_import_args = @{ $args{import_args} // [] };
         eval {
             package TestTarget;
-            TestSource->import(@_import_args);
+            $recap = TestSource->import(@_import_args);
             package main;
         };
         my $e = $@;
@@ -330,12 +331,10 @@ sub test_export {
                 diag "imported = ", explain(\@imported);
         }
 
-        no strict 'refs';
-        my @wrapped = grep {blessed(\&{"TestTarget::$_"})} @imported;
         if ($args{wrapped}) {
             my @exp = sort @{$args{wrapped}};
-            is_deeply(\@wrapped, \@exp, "wrapped [".join(" ", @exp)."]") or
-                diag "wrapped = ", explain(\@wrapped);
+            is_deeply($recap->{wrapped}, \@exp, "wrapped [".join(" ", @exp)."]") or
+                diag "wrapped = ", explain($recap->{wrapped});
         }
 
         if ($args{posttest}) {

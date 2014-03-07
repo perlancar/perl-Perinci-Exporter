@@ -133,6 +133,9 @@ sub do_export {
     require SHARYANTO::Package::Util;
     my %existing = SHARYANTO::Package::Util::list_package_contents($target);
 
+    # recap information
+    my $recap = {wrapped=>[]};
+
     # import!
 
     $pkg_cache{$source} //= {};
@@ -145,7 +148,7 @@ sub do_export {
             @ssyms = ($imp->{sym});
         }
 
-        for my $ssym (@ssyms) {
+        for my $ssym (sort @ssyms) {
 
             if (!$exports{$ssym}) {
                 die "$ssym is not exported by $source";
@@ -214,6 +217,7 @@ sub do_export {
                 }
                 if ($cache) {
                     $sub = $cache;
+                    push @{ $recap->{wrapped} }, $ssym;
                 } else {
                     $sub = \&{"$source\::$ssym"};
                     my $meta = $metas->{$ssym};
@@ -224,14 +228,15 @@ sub do_export {
                         require Perinci::Sub::Wrapper;
                         my $res = Perinci::Sub::Wrapper::wrap_sub(
                             %$wrap,
-                            sub  => \&{"$source\::$ssym"},
-                            meta => $meta,
+                            sub_name => "$source\::$ssym",
+                            meta     => $meta,
                         );
                         die "Can't wrap $ssym for $target: ".
                             "$res->[0] - $res->[1]" unless $res->[0] == 200;
                         $sub = $res->[2]{sub};
                         $pkg_cache{$source}{$ssym}{sub} = $sub
                             if $use_default_wrap_args;
+                        push @{ $recap->{wrapped} }, $ssym;
                     }
                 }
             }
@@ -246,6 +251,8 @@ sub do_export {
         } # for @ssyms
 
     } # for @imps
+
+    $recap;
 }
 
 1;
@@ -490,9 +497,8 @@ Examples:
  use YourModule foo => {args_as=>'array'}; # export with custom wrap
 
 Note that when set to 0, the exported function might already be wrapped anyway,
-e.g. when your module adds this at the bottom:
-
- Perinci::Sub::Wrapper::wrap_all_subs();
+e.g. when your module uses embedded wrapping (see
+L<Dist::Zilla::Plugin::Rinci::Wrap>) or wrap its subroutines manually.
 
 Also note that wrapping will not be done if subroutine does not have metadata.
 
