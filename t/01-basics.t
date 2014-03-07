@@ -326,7 +326,7 @@ sub test_export {
         my @imported = sort grep {/^f/} keys %TestTarget::;
         if ($args{imported}) {
             my @exp = sort @{$args{imported}};
-            is_deeply(\@imported, \@exp, "wrapped [".join(" ", @exp)."]") or
+            is_deeply(\@imported, \@exp, "imported [".join(" ", @exp)."]") or
                 diag "imported = ", explain(\@imported);
         }
 
