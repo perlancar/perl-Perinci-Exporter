@@ -3,6 +3,7 @@ package Perinci::Exporter;
 use 5.010001;
 use strict;
 use warnings;
+use experimental 'smartmatch';
 
 use Scalar::Util qw(reftype);
 
