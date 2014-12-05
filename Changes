@@ -1,5 +1,13 @@
 Revision history for Perinci-Exporter
 
+0.05    2014-12-05 (PERLANCAR)
+
+	- No functional changes.
+
+	- Use the new renamed module SHARYANTO::Package::Util ->
+	  Package::MoreUtil.
+
+
 0.04     2014-03-07 (SHARYANTO)
 
          - No functional changes. Update to Perinci::Sub::Wrapper 0.51.
