@@ -1,13 +1,14 @@
 package Perinci::Exporter;
 
+# DATE
+# VERSION
+
 use 5.010001;
 use strict;
 use warnings;
 use experimental 'smartmatch';
 
 use Scalar::Util qw(reftype);
-
-# VERSION
 
 # what a generic name, this hash caches the wrapped functions, so that when
 # importer asks to import a wrapped function with default wrapping options, we
@@ -130,8 +131,8 @@ sub do_export {
     # find out existing symbols on the target package, so we can die on clash,
     # if that behavior's what the importer wants
 
-    require SHARYANTO::Package::Util;
-    my %existing = SHARYANTO::Package::Util::list_package_contents($target);
+    require Package::MoreUtil;
+    my %existing = Package::MoreUtil::list_package_contents($target);
 
     # recap information
     my $recap = {wrapped=>[]};
