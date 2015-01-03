@@ -623,21 +623,6 @@ Note: L<Perinci::Sub::property::curry> is needed for this.
 They can still be exported if you list them in @EXPORT or @EXPORT_OK.
 
 
-=head1 TODO/IDEAS
-
-=over 4
-
-=item * Support combining tags?
-
- use YourModule qw(not(:tag1));
- use YourModule qw(and(:tag1,:tag2));
- use YourModule qw(or(:tag1,and(:tag2,:tag3)));
-
-=item * Export variables, etc.
-
-=back
-
-
 =head1 SEE ALSO
 
 L<Perinci>
