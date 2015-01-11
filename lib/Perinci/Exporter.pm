@@ -8,8 +8,6 @@ use strict;
 use warnings;
 use experimental 'smartmatch';
 
-use Scalar::Util qw(reftype);
-
 # what a generic name, this hash caches the wrapped functions, so that when
 # importer asks to import a wrapped function with default wrapping options, we
 # don't have to call wrap_sub again. customly wrapped functions are not cached
@@ -52,7 +50,7 @@ sub install_import {
 
 sub do_export {
     my $expopts;
-    if ($_[0] && (reftype($_[0]) // '') eq 'HASH') {
+    if ($_[0] && ref($_[0]) eq 'HASH') {
         $expopts = shift;
     } else {
         die "First argument to do_export() must be export options";
@@ -115,7 +113,7 @@ sub do_export {
             next;
         } else {
             my $el = {};
-            if (@_ && (reftype($_[0]) // '') eq 'HASH') {
+            if (@_ && ref($_[0]) eq 'HASH') {
                 my $io = shift;
                 $el->{$_} = $io->{$_} for keys %$io;
             };
@@ -184,7 +182,7 @@ sub do_export {
             my $wrap;
             if (defined $imp->{wrap}) {
                 $wrap = $imp->{wrap};
-                if ((reftype($wrap) // '') eq 'HASH') {
+                if (ref($wrap) eq 'HASH') {
                     $use_default_wrap_args = 0;
                 }
             } else {
@@ -192,7 +190,7 @@ sub do_export {
             }
             if ($wrap) {
                 # copy
-                if ((reftype($wrap) // '') eq 'HASH') {
+                if (ref($wrap) eq 'HASH') {
                     $wrap = { %$wrap };
                     $use_default_wrap_args = keys(%$wrap) == 0;
                 } else {
