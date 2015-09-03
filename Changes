@@ -1,5 +1,21 @@
 Revision history for Perinci-Exporter
 
+0.06    2015-09-03 (PERLANCAR)
+
+	- No functional changes.
+
+	- [dist] Move spec prereqs from RuntimeRequires to
+	  DevelopRecommends to reduce deps but still allow indicating spec
+	  requirement.
+
+	- [dzil] Update syntax of lint-prereqs directive (-> lint_prereqs)
+	  to be more IOD-compliant.
+
+	- Use good ol' ref() again instead of Scalar::Util::reftype(),
+	  because I'm no longer blessing Perinci::Sub::Wrapper-wrapped
+	  subroutines.
+
+
 0.05    2014-12-05 (PERLANCAR)
 
 	- No functional changes.
