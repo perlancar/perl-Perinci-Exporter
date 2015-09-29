@@ -1,5 +1,18 @@
 Revision history for Perinci-Exporter
 
+0.07    2015-09-29 (PERLANCAR)
+
+	- Add Perinci::Examples::Export.
+
+	- [Incompatible change] Change 'default' tag to 'export:default' tag to
+          be more specific.
+
+        - Introduce 'export:never' tag as a way to never export a function.
+
+        - When user imports with tag 'foo', will match function tag 'foo' as
+          well as 'export:foo'.
+
+
 0.06    2015-09-03 (PERLANCAR)
 
 	- No functional changes.
