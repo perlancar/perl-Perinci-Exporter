@@ -10,17 +10,19 @@ use Perinci::Exporter qw();
 
 package TestSource;
 
-# note: all exports should be /^f/
+# note: in our scenario here, all exports should be /^f/ to make it easy to test
 
 our %SPEC;
-$SPEC{f1} = {v=>1.1, tags=>[qw/a b default/]};
-sub   f1    { [200,"OK","f1"] };
-$SPEC{f2} = {v=>1.1, tags=>[qw/a default/]};
-sub   f2    { [200,"OK","f2"] };
+$SPEC{f1} = {v=>1.1, tags=>[qw/a b export:default/]};
+sub   f1    { [200,"OK","f1"] }
+$SPEC{f2} = {v=>1.1, tags=>[qw/a export:default/]};
+sub   f2    { [200,"OK","f2"] }
 $SPEC{f3} = {v=>1.1, tags=>[qw/b/]};
-sub   f3    { [200,"OK","f3"] };
+sub   f3    { [200,"OK","f3"] }
 $SPEC{f4} = {v=>1.1, tags=>[qw/c/]};
 sub   f4    { [200,"OK","f4"] }
+$SPEC{f5} = {v=>1.1, tags=>[qw/a b c export:never/]};
+sub   f5    { [200,"OK","f5"] }
 
 # to test @EXPORT & @EXPORT_OK
 sub   f91   { [200,"OK","f91"] }
@@ -65,6 +67,7 @@ test_export(
 {
     # we also test that wrapping is not redone for functions which use default
     # wrapping args
+    require Perinci::Sub::Wrapper;
     no warnings 'redefine';
     local *Perinci::Sub::Wrapper::wrap_sub = sub { die };
 

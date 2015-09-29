@@ -6,7 +6,6 @@ package Perinci::Exporter;
 use 5.010001;
 use strict;
 use warnings;
-use experimental 'smartmatch';
 
 # what a generic name, this hash caches the wrapped functions, so that when
 # importer asks to import a wrapped function with default wrapping options, we
@@ -70,18 +69,20 @@ sub do_export {
     for my $k (keys %$metas) {
         # for now we limit ourselves to subs
         next unless $k =~ /\A\w+\z/;
+        my @tags = @{ $metas->{$k}{tags} // [] };
+        next if grep {$_ eq 'export:never'} @tags;
         $exports{$k} = {
-            tags => [@{ $metas->{$k}{tags} // []}],
+            tags => \@tags,
         };
     }
 
     for my $k (@{$expopts->{default_exports} // []},
                @{"$source\::EXPORT"}) {
         if ($exports{$k}) {
-            push @{$exports{$k}{tags}}, 'default';
+            push @{$exports{$k}{tags}}, 'export:default';
         } else {
             $exports{$k} = {
-                tags => [qw/default/],
+                tags => [qw/export:default/],
             };
         }
     }
@@ -142,7 +143,10 @@ sub do_export {
     for my $imp (@imps) {
         my @ssyms; # symbols from source package
         if ($imp->{sym} =~ s/^://) {
-            @ssyms = grep {$imp->{sym} ~~ $exports{$_}{tags}} keys %exports;
+            @ssyms = grep { grep {
+                "export:$imp->{sym}" eq $_ || $imp->{sym} eq $_
+            } @{ $exports{$_}{tags} } }
+                keys %exports;
         } else {
             @ssyms = ($imp->{sym});
         }
@@ -260,9 +264,25 @@ sub do_export {
 =head1 SYNOPSIS
 
  package YourModule;
+
  # most of the time, you only need to do this
  use Perinci::Exporter;
 
+ our %SPEC;
+
+ # f1 will not be exported by default, but user can import them explicitly using
+ # 'use YourModule qw(f1)'
+ $SPEC{f1} = { v=>1.1 };
+ sub f1 { ... }
+
+ # f2 will be exported by default because it has the export:default tag
+ $SPEC{f2} = { v=>1.1, tags=>[qw/a export:default/] };
+ sub f2 { ... }
+
+ # f3 will never be exported, and user cannot import them via 'use YourModule
+ # qw(f1)' nor via 'use YourModule qw(:a)'
+ $SPEC{f3} = { v=>1.1, tags=>[qw/a export:never/] };
+ sub f3 { ... }
 
 =head1 DESCRIPTION
 
@@ -334,29 +354,32 @@ The simplest form is:
 
  use YourModule;
 
-which by default will export all functions marked with C<:default> tags. For
-example:
+which by default will export all functions marked with C<export:default> tags.
+For example:
 
  package YourModule;
  use Perinci::Exporter;
  our %SPEC;
- $SPEC{f1} = { v=>1.1, tags=>[qw/default a/] };
+ $SPEC{f1} = { v=>1.1, tags=>[qw/export:default a/] };
  sub   f1    { ... }
- $SPEC{f2} = { v=>1.1, tags=>[qw/default a b/] };
+ $SPEC{f2} = { v=>1.1, tags=>[qw/export:default a b/] };
  sub   f2    { ... }
  $SPEC{f3} = { v=>1.1, tags=>[qw/b c/] };
  sub   f3    { ... }
+ $SPEC{f4} = { v=>1.1, tags=>[qw/a b c export:never/] };
+ sub   f4    { ... }
  1;
 
-YourModule will by default export f1 and f2. If there are no functions tagged
-with C<default>, there will be no default exports. You can also supply the list
-of default functions via the C<default_exports> argument:
+YourModule will by default export C<f1> and C<f2>. If there are no functions
+tagged with C<export:default>, there will be no default exports. You can also
+supply the list of default functions via the C<default_exports> argument:
 
  use Perinci::Exporter default_exports => [qw/f1 f2/];
 
 or via the @EXPORT package variable, like in Exporter.
 
-B<Exporting individual functions>. Users can import individual functions:
+B<Importing individual functions>. Your module users can import individual
+functions:
 
  use YourModule qw(f1 f2);
 
@@ -365,16 +388,17 @@ Each function can have import options, specified in a hashref:
  use YourModule f1 => {wrap=>0}, f2=>{as=>'bar', args_as=>'array'};
  # imports f1, bar
 
-B<Exporting groups of functions by tags>. Users can import groups of individual
-functions using tags. Tags are collected from function metadata, and written
-with a C<:> prefix (to differentiate them from function names). Each tag can
-also have import options:
+B<Importing groups of functions by tags>. Your module users can import groups of
+individual functions using tags. Tags are collected from function metadata, and
+written with a C<:> prefix to differentiate them from function names. Each tag
+can also have import options:
 
  use YourModule 'f3', ':a' => {prefix => 'a_'}; # imports f3, a_f1, a_f2
 
-Some tags are defined automatically: C<:default>, C<:all>.
+Some tags are defined automatically: C<:default> (all functions that have the
+C<export:default> tag), C<:all> (all functions).
 
-B<Exporting to a different name>. As can be seen from previous examples, the
+B<Importing to a different name>. As can be seen from previous examples, the
 'as' and 'prefix' (and also 'suffix') import options can be used to import
 subroutines using into a different name.
 
