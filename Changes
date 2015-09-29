@@ -12,6 +12,8 @@ Revision history for Perinci-Exporter
         - When user imports with tag 'foo', will match function tag 'foo' as
           well as 'export:foo'.
 
+        - Remove the use of smartmatch/experimental.pm to reduce deps.
+
 
 0.06    2015-09-03 (PERLANCAR)
 
