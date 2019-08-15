@@ -37,7 +37,7 @@ sub install_import {
                 target           => $caller[0],
                 default_exports  => $instargs{default_exports},
                 extra_exports    => $instargs{extra_exports},
-                default_wrap     => defined($instargs{default_wrap})     ? $instargs{default_wrap} : 1,
+                default_wrap     => defined($instargs{default_wrap})     ? $instargs{default_wrap} : 0,
                 default_on_clash => defined($instargs{default_on_clash}) ? $instargs{default_on_clash} : 'force',
             },
             @_,
@@ -181,41 +181,47 @@ sub do_export {
                 }
             }
 
-            # should we wrap?
-            my $use_default_wrap_args = 1;
             my $wrap;
-            if (defined $imp->{wrap}) {
-                $wrap = $imp->{wrap};
-                if (ref($wrap) eq 'HASH') {
-                    $use_default_wrap_args = 0;
-                }
-            } else {
-                $wrap = $expopts->{default_wrap};
-            }
-            if ($wrap) {
-                # copy
-                if (ref($wrap) eq 'HASH') {
-                    $wrap = { %$wrap };
-                    $use_default_wrap_args = keys(%$wrap) == 0;
-                } else {
-                    $wrap = {};
-                }
+          SET_WRAP_OPTS: {
+                my $default_wrap = ref $expopts->{default_wrap} eq 'HASH' ?
+                    {%{ $expopts->{default_wrap} }} : $expopts->{default_wrap};
+                my $default_wrap_opts = $default_wrap;
+                $default_wrap_opts = {} if ref $default_wrap_opts ne 'HASH';
+                $default_wrap = {} if $default_wrap && ref $default_wrap ne 'HASH';
+
+                $wrap = ref $imp->{wrap} eq 'HASH' ?
+                    {%{ $imp->{wrap} }} : $imp->{wrap};
+                $wrap = {} if $wrap && ref $wrap ne 'HASH';
                 if (defined $imp->{convert}) {
-                    $use_default_wrap_args = 0;
+                    die "Error when exporting $ssym: 'convert' option needs wrap=1 but wrap is disabled"
+                        if defined $wrap && !$wrap;
+                    $wrap = $default_wrap_opts unless ref $wrap eq 'HASH';
+
                     $wrap->{convert} = $imp->{convert};
                 }
-                for (qw/args_as result_naked curry/) {
+                for (qw/args_as result_naked curry timeout/) {
                     if (defined $imp->{$_}) {
-                        $use_default_wrap_args = 0;
+                        die "Error when exporting $ssym: '$_' option needs wrap=1 but wrap is disabled"
+                            if defined $wrap && !$wrap;
+                        $wrap = $default_wrap_opts unless ref $wrap eq 'HASH';
+
                         $wrap->{convert} ||= {};
                         $wrap->{convert}{$_} = $imp->{$_};
                     }
                 }
-            }
+
+                $wrap = $default_wrap unless defined $wrap;
+                #use DD; dd {ssym=>$ssym, wrap=>$wrap};
+            } # SET_WRAP_OPTS
+
             my $sub = \&{"$source\::$ssym"};
-            if ($wrap) {
+          DO_WRAP: {
+                last unless $wrap;
+
                 my $cache;
-                if ($use_default_wrap_args) {
+                if (keys(%$wrap) == 0) {
+                    # using default wrap options, we store the cached version of
+                    # these
                     $cache = $pkg_cache{$source}{$ssym}{sub};
                 }
                 if ($cache) {
@@ -238,14 +244,13 @@ sub do_export {
                             "$res->[0] - $res->[1]" unless $res->[0] == 200;
                         $sub = $res->[2]{sub};
                         $pkg_cache{$source}{$ssym}{sub} = $sub
-                            if $use_default_wrap_args;
+                            if keys(%$wrap) == 0;
                         push @{ $recap->{wrapped} }, $ssym;
                     }
                 }
-            }
+            } # DO_WRAP
 
             # finally, do the actual exporting!
-            no strict 'refs';
             #say "Exporting $ssym -> $target\::$tsym"; #DEBUG#
             *{"$target\::$tsym"} = $sub;
 
@@ -317,7 +322,7 @@ sub _package_exists {
 }
 
 1;
-# ABSTRACT: Metadata-aware Exporter
+# ABSTRACT: An exporter that groks Rinci metadata
 
 =head1 SYNOPSIS
 
@@ -355,7 +360,7 @@ Features of this module:
 =item * List exportable routines from Rinci metadata
 
 All functions which have metadata are assumed to be exportable, so you do not
-have to list them again via @EXPORT or @EXPORT_OK.
+have to list them again via C<@EXPORT> or C<@EXPORT_OK>.
 
 =item * Read tags from Rinci metadata
 
@@ -434,7 +439,7 @@ supply the list of default functions via the C<default_exports> argument:
 
  use Perinci::Exporter default_exports => [qw/f1 f2/];
 
-or via the @EXPORT package variable, like in Exporter.
+or via the C<@EXPORT> package variable, like in Exporter.
 
 B<Importing individual functions>. Your module users can import individual
 functions:
@@ -500,14 +505,14 @@ caller(0), but the caller level can be set using this argument.
 
 Default symbols to export.
 
-You can also set default exports by setting @EXPORT.
+You can also set default exports by setting C<@EXPORT>.
 
 =item * extra_exports => ARRAY
 
 Other symbols to export (other than the ones having metadata and those specified
-with C<default_exports> and @EXPORT).
+with C<default_exports> and C<@EXPORT>).
 
-You can also set default exports by setting @EXPORT_OK.
+You can also set default exports by setting C<@EXPORT_OK>.
 
 =item * default_wrap => BOOL (default: 1)
 
@@ -523,7 +528,7 @@ What to do when clash of symbols happen.
 
 The routine which implements the exporting. Will be called from the import()
 routine. $expopts is a hashref containing exporter options, constructed by
-install_import(). @args is the same as arguments passed during import: a
+install_import(). C<@args> is the same as arguments passed during import: a
 sequence of function name or tag name (prefixed with C<:>), function/tag name
 and export option (hashref), or option (prefixed with C<->).
 
@@ -565,17 +570,28 @@ Example:
 
 This means, C<foo>, C<bar>, etc. will be exported as C<foo_s>, C<bar_s>, etc.
 
-=item * wrap => 0 | 1 | HASH (default: from install_import()'s default_wrap)
+=item * wrap => 0 | 1 | HASH
 
-The default is export the wrapped functions. Can be set this to 0 to disable
-wrapping, or a hash containing custom wrap arguments (to be passed to
-L<Perinci::Sub::Wrapper>'s wrap_sub()).
+The default (when value of this option is unset>) is to export the
+original/unwrapped functions, unless wrapping is necessary. Other options like
+C<timeout>, C<retry>, C<convert>, C<args_as> require wrapping so they
+automatically turn on wrapping.
+
+You can explicitly turn wrapping on unconditionally by setting the value of this
+option to 1 (enable wrapping with default wrapping options) or a hashref that
+will be passed to L<Perinci::Sub::Wrapper>'s C<wrap_sub()> to customize
+wrapping.
+
+You can also explicitly disable wrapping by setting the value of this option to
+0. If you also specify other options that require wrapping (for example,
+C<retry>) an exception will be raised.
 
 Examples:
 
- use YourModule foo => {}; # export wrapped, with default wrap options
- use YourModule foo => {wrap=>0}; # export unwrapped
- use YourModule foo => {args_as=>'array'}; # export with custom wrap
+ use YourModule foo => {};                     # export unwrapped, original function
+ use YourModule foo => {timeout=>30};          # export wrapped functions
+ use YourModule foo => {wrap=>1};              # export wrapped functions
+ use YourModule foo => {wrap=>0, timeout=>30}; # dies! 'timeout' option requires wrapping
 
 Note that when set to 0, the exported function might already be wrapped anyway,
 e.g. when your module uses embedded wrapping (see
@@ -637,9 +653,9 @@ Like C<suffix> import option, but to apply to all exports.
 If you are fine with Exporter, Exporter::Lite, or L<Sub::Exporter>, then you
 probably won't need this module.
 
-This module is particularly useful if your subs have Rinci metadata, in which
-case you'll get some nice features. Some examples of the things you can do with
-this exporter:
+This module is particularly useful if you use Rinci metadata, in which case
+you'll get some nice features. Some examples of the things you can do with this
+exporter:
 
 =over 4
 
@@ -655,7 +671,7 @@ your function is called with positional arguments:
 
  func(1, 2);
 
-Note: this requires that the function's argument spec puts the 'pos'
+Note: this requires that the function's argument spec puts the C<pos>
 information. For example:
 
  $SPEC{func} = {
@@ -703,7 +719,7 @@ this.
 
 =head2 What happens to functions that do not have metadata?
 
-They can still be exported if you list them in @EXPORT or @EXPORT_OK.
+They can still be exported if you list them in C<@EXPORT> or C<@EXPORT_OK>.
 
 
 =head1 SEE ALSO

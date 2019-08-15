@@ -1,6 +1,6 @@
 #!perl
 
-use strict;
+use strict 'subs', 'vars';
 use warnings;
 use Test::Exception;
 use Test::More 0.98;
@@ -56,8 +56,8 @@ our @_import_args;
 package main;
 
 test_export(
-    name        => 'default export/import',
-    export_args => [],
+    name        => 'default export/import, default_wrap=1',
+    export_args => [default_wrap=>1],
     import_args => [],
     imported    => [qw(f1 f2 f4 f91)],
     wrapped     => [qw(f1 f2 f4)],
@@ -71,8 +71,8 @@ test_export(
     local *Perinci::Sub::Wrapper::wrap_sub = sub { die };
 
     test_export(
-        name        => 'import individual symbol',
-        export_args => [],
+        name        => 'import individual symbol, default_wrap=1',
+        export_args => [default_wrap=>1],
         import_args => [qw(f1)],
         imported    => [qw(f1)],
     );
@@ -107,8 +107,8 @@ test_export(
 );
 
 test_export(
-    name        => 'export option: default_wrap=0',
-    export_args => [default_wrap => 0],
+    name        => 'export option: default_wrap=0 (the default)',
+    export_args => [],
     import_args => [],
     imported    => [qw(f1 f2 f4 f91)],
     wrapped     => [qw()],
@@ -118,7 +118,6 @@ test_export(
     name        => 'export option: default_on_clash=bail #1',
     preimport   => sub {
         package TestTarget;
-        no strict 'refs';
         *{"f4"} = sub {};
         package main;
     },
@@ -131,7 +130,6 @@ test_export(
     name        => 'export option: default_on_clash=bail #2',
     preimport   => sub {
         package TestTarget;
-        no strict 'refs';
         *{"f4"} = sub {};
         package main;
     },
@@ -173,7 +171,6 @@ test_export(
     export_args => [],
     preimport   => sub {
         package TestTarget;
-        no strict 'refs';
         *{"f4"} = sub {};
         package main;
     },
@@ -217,19 +214,17 @@ test_export(
     imported    => [qw(fargs)],
     wrapped     => [qw(fargs)],
     posttest    => sub {
-        no strict 'refs';
         is_deeply(&{"TestTarget::fargs"}, [200, "OK", "a1= a2= a3="], "result");
     },
 );
 
 test_export(
     name        => 'just to test that fargs\'s default wrapper not overriden',
-    export_args => [],
+    export_args => [default_wrap=>1],
     import_args => [qw(fargs)],
     imported    => [qw(fargs)],
     wrapped     => [qw(fargs)],
     posttest    => sub {
-        no strict 'refs';
         is_deeply(&{"TestTarget::fargs"}, "a1= a2= a3=", "result");
     },
 );
@@ -241,7 +236,6 @@ test_export(
     imported    => [qw(fargs)],
     wrapped     => [qw(fargs)],
     posttest    => sub {
-        no strict 'refs';
         is_deeply(&{"TestTarget::fargs"}, [200, "OK", "a1= a2= a3="], "result");
     },
 );
@@ -253,7 +247,6 @@ test_export(
     imported    => [qw(fargs)],
     wrapped     => [qw(fargs)],
     posttest    => sub {
-        no strict 'refs';
         is_deeply(&{"TestTarget::fargs"}(1, 2, 3), "a1=1 a2=2 a3=3", "result");
     },
 );
@@ -265,7 +258,6 @@ test_export(
     imported    => [qw(fargs)],
     wrapped     => [qw(fargs)],
     posttest    => sub {
-        no strict 'refs';
         is_deeply(&{"TestTarget::fargs"}, [200, "OK", "a1= a2= a3="], "result");
     },
 );
@@ -277,9 +269,15 @@ test_export(
     imported    => [qw(fargs)],
     wrapped     => [qw(fargs)],
     posttest    => sub {
-        no strict 'refs';
         is_deeply(&{"TestTarget::fargs"}(a2=>2), "a1=10 a2=2 a3=", "result");
     },
+);
+
+test_export(
+    name        => 'curry + wrap=0 -> dies',
+    export_args => [],
+    import_args => [fargs => {wrap=>0, curry=>{a1=>10}}],
+    import_dies => 1,
 );
 
 # XXX test install_import() option: caller_level
