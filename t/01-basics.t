@@ -1,10 +1,9 @@
 #!perl
 
-use 5.010;
 use strict;
 use warnings;
 use Test::Exception;
-use Test::More 0.96;
+use Test::More 0.98;
 
 use Perinci::Exporter qw();
 
@@ -42,9 +41,9 @@ $SPEC{fargs} = {
 sub fargs {
     my %args = @_;
     join("",
-         "a1=", $args{a1}//"", " ",
-         "a2=", $args{a2}//"", " ",
-         "a3=", $args{a3}//"");
+         "a1=", $args{a1}||"", " ",
+         "a2=", $args{a2}||"", " ",
+         "a3=", $args{a3}||"");
 }
 
 our @EXPORT    = qw(f4 f91);
@@ -300,7 +299,7 @@ sub test_export {
         {
             delete $TestSource::{import};
             Perinci::Exporter::install_import(
-                @{$args{export_args} // []}, into => 'TestSource');
+                @{$args{export_args} || []}, into => 'TestSource');
         }
 
         if ($args{preimport}) {
@@ -310,7 +309,7 @@ sub test_export {
         my $recap;
 
         # import()
-        @TestTarget::_import_args = @{ $args{import_args} // [] };
+        @TestTarget::_import_args = @{ $args{import_args} || [] };
         eval {
             package TestTarget;
             $recap = TestSource->import(@_import_args);

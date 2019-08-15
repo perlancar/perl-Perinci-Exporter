@@ -3,9 +3,9 @@ package Perinci::Examples::Export;
 # DATE
 # VERSION
 
-use 5.010;
-use strict;
-use warnings;
+# be lean
+#use strict;
+#use warnings;
 
 use Perinci::Exporter;
 

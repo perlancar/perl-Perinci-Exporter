@@ -3,9 +3,10 @@ package Perinci::Exporter;
 # DATE
 # VERSION
 
-use 5.010001;
-use strict;
+# IFUNBUILT
+use strict 'subs', 'vars';
 use warnings;
+# END IFUNBUILT
 
 # what a generic name, this hash caches the wrapped functions, so that when
 # importer asks to import a wrapped function with default wrapping options, we
@@ -21,8 +22,8 @@ sub import {
 
 sub install_import {
     my %instargs = @_;
-    my @caller   = caller($instargs{caller_level} // 0);
-    my $into     = $instargs{into} // $caller[0];
+    my @caller   = caller($instargs{caller_level} || 0);
+    my $into     = $instargs{into} || $caller[0];
     return [400, "Please specify package to install import() to ".
                 "(either via 'into' or 'caller_level')"]
         unless $into;
@@ -36,8 +37,8 @@ sub install_import {
                 target           => $caller[0],
                 default_exports  => $instargs{default_exports},
                 extra_exports    => $instargs{extra_exports},
-                default_wrap     => $instargs{default_wrap} // 1,
-                default_on_clash => $instargs{default_on_clash} // 'force',
+                default_wrap     => defined($instargs{default_wrap})     ? $instargs{default_wrap} : 1,
+                default_on_clash => defined($instargs{default_on_clash}) ? $instargs{default_on_clash} : 'force',
             },
             @_,
         );
@@ -65,18 +66,18 @@ sub do_export {
 
     my %exports;
     my $metas = \%{"$source\::SPEC"};
-    $metas //= {};
+    $metas ||= {};
     for my $k (keys %$metas) {
         # for now we limit ourselves to subs
         next unless $k =~ /\A\w+\z/;
-        my @tags = @{ $metas->{$k}{tags} // [] };
+        my @tags = @{ $metas->{$k}{tags} || [] };
         next if grep {$_ eq 'export:never'} @tags;
         $exports{$k} = {
             tags => \@tags,
         };
     }
 
-    for my $k (@{$expopts->{default_exports} // []},
+    for my $k (@{$expopts->{default_exports} || []},
                @{"$source\::EXPORT"}) {
         if ($exports{$k}) {
             push @{$exports{$k}{tags}}, 'export:default';
@@ -87,7 +88,7 @@ sub do_export {
         }
     }
 
-    for my $k (@{$expopts->{extra_exports} // []},
+    for my $k (@{$expopts->{extra_exports} || []},
                @{"$source\::EXPORT_OK"}) {
         if ($exports{$k}) {
         } else {
@@ -108,7 +109,7 @@ sub do_export {
     while (1) {
         last unless @_;
         my $i = shift;
-        if ($i =~ s/^-//) {
+        if ($i =~ s!^-!!) {
             die "Import option -$i requires argument" unless @_;
             $impopts{$i} = shift;
             next;
@@ -130,19 +131,18 @@ sub do_export {
     # find out existing symbols on the target package, so we can die on clash,
     # if that behavior's what the importer wants
 
-    require Package::MoreUtil;
-    my %existing = Package::MoreUtil::list_package_contents($target);
+    my %existing = _list_package_contents($target);
 
     # recap information
     my $recap = {wrapped=>[]};
 
     # import!
 
-    $pkg_cache{$source} //= {};
+    $pkg_cache{$source} ||= {};
 
     for my $imp (@imps) {
         my @ssyms; # symbols from source package
-        if ($imp->{sym} =~ s/^://) {
+        if ($imp->{sym} =~ s!^:!!) {
             @ssyms = grep { grep {
                 "export:$imp->{sym}" eq $_ || $imp->{sym} eq $_
             } @{ $exports{$_}{tags} } }
@@ -163,17 +163,17 @@ sub do_export {
                 $tsym = $imp->{as};
             } else {
                 $tsym = $ssym;
-                if (my $prefix = $imp->{prefix} // $impopts{prefix}) {
+                if (my $prefix = defined($imp->{prefix}) ? $imp->{prefix} : $impopts{prefix}) {
                     $tsym = "$prefix$tsym";
                 }
-                if (my $suffix = $imp->{suffix} // $impopts{suffix}) {
+                if (my $suffix = defined($imp->{suffix}) ? $imp->{suffix} : $impopts{suffix}) {
                     $tsym = "$tsym$suffix";
                 }
             }
 
             # clash?
             if ($existing{$tsym}) {
-                if (($impopts{on_clash} // $expopts->{default_on_clash})
+                if ((defined($impopts{on_clash}) ? $impopts{on_clash} : $expopts->{default_on_clash})
                         eq 'bail') {
                     die "Refusing to export ".
                         ($tsym eq $ssym ? $ssym : "$ssym (as $tsym)").
@@ -207,7 +207,7 @@ sub do_export {
                 for (qw/args_as result_naked curry/) {
                     if (defined $imp->{$_}) {
                         $use_default_wrap_args = 0;
-                        $wrap->{convert} //= {};
+                        $wrap->{convert} ||= {};
                         $wrap->{convert}{$_} = $imp->{$_};
                     }
                 }
@@ -256,6 +256,64 @@ sub do_export {
     } # for @imps
 
     $recap;
+}
+
+# borrowed from Package::MoreUtil. this is actually not a proper implementation,
+# but since we want to avoid extra footprint by loading Package::Stash, we'll
+# get by for now.
+sub _list_package_contents {
+    my $pkg = shift;
+
+    return () unless !length($pkg) || _package_exists($pkg);
+    my $symtbl = \%{$pkg . "::"};
+
+    my %res;
+    while (my ($k, $v) = each %$symtbl) {
+        next if $k =~ /::$/; # subpackage
+        my $n;
+        if ("$v" !~ /^\*/) {
+            # constant
+            $res{$k} = $v;
+            next;
+        }
+        if (defined *$v{CODE}) {
+            $res{$k} = *$v{CODE}; # subroutine
+            $n++;
+        }
+        if (defined *$v{HASH}) {
+            $res{"\%$k"} = \%{*$v}; # hash
+            $n++;
+        }
+        if (defined *$v{ARRAY}) {
+            $res{"\@$k"} = \@{*$v}; # array
+            $n++;
+        }
+        if (defined(*$v{SCALAR}) # XXX always defined?
+                && defined(${*$v})) { # currently we filter undef values
+            $res{"\$$k"} = \${*$v}; # scalar
+            $n++;
+        }
+
+        if (!$n) {
+            $res{"\*$k"} = $v; # glob
+        }
+    }
+
+    %res;
+}
+
+# also borrowed from Package::MoreUtil
+sub _package_exists {
+    my $pkg = shift;
+
+    # opt
+    #return unless $pkg =~ /\A\w+(::\w+)*\z/;
+
+    if ($pkg =~ s!::(\w+)\z!!) {
+        return !!${$pkg . "::"}{$1 . "::"};
+    } else {
+        return !!$::{$pkg . "::"};
+    }
 }
 
 1;
@@ -614,7 +672,8 @@ information. For example:
 
 This means all exported functions will be limited to 10s of execution time.
 
-Note: Perinci::Sub::property::timeout is needed for this.
+Note: L<Perinci::Sub::property::timeout> (an optional dependency) is needed for
+this.
 
 =item * Set retry
 
@@ -622,7 +681,8 @@ Note: Perinci::Sub::property::timeout is needed for this.
 
 This means all exported functions can autoretry up to 3 times.
 
-Note: Perinci::Sub::property::retry is needed for this.
+Note: L<Perinci::Sub::property::retry> (an optional dependency) is needed for
+this.
 
 =item * Currying
 
@@ -636,7 +696,8 @@ This means:
  f_a10(b=>20, c=>30); # equivalent to f(a=>10, b=>20, c=>30)
  f_a10(a=>5);         # error, a is already set
 
-Note: L<Perinci::Sub::property::curry> is needed for this.
+Note: L<Perinci::Sub::property::curry> (an optional dependency) is needed for
+this.
 
 =back
 
