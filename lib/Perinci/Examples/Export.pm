@@ -1,3 +1,5 @@
+## no critic: Modules::ProhibitAutomaticExportation
+
 package Perinci::Examples::Export;
 
 # DATE

@@ -1,3 +1,26 @@
+0.080   2019-08-15  Released-By: PERLANCAR; Urgency: medium
+
+	[INCOMPATIBLE CHANGES]
+
+        - To be less invasive and more generally usable, wrapping now defaults
+	  to off unless required, e.g. user specifies other options that require
+	  wrapping e.g. 'retry', 'args_as', 'convert', etc.
+
+        [ENHANCEMENTS]
+
+	- Make Perinci::Exporter's startup lighter: no strict, warnings, use
+          5.010. It is now more closer to Exporter.pm and Exporter::Rinci in
+          startup overhead.
+
+        - Reduce the number of dependencies. Make Perinci::Sub::Wrapper and
+          Perinci::Sub::Property::* optional dependencies, since we now change
+          default wrap=0. Inline routines from Package::MoreUtil.
+
+        [DOCUMENTATION]
+
+        - Mention Exporter::Rinci.
+
+
 0.07    2015-09-29  Released-By: PERLANCAR
 
 	- Add Perinci::Examples::Export.
