@@ -728,4 +728,11 @@ L<Perinci>
 
 L<Perinci::Sub::Wrapper>
 
+If you want something simpler but also groks Rinci metadata, there's
+L<Exporter::Rinci>. It's just like good old Exporter.pm, but wraps it so
+C<@EXPORT>, C<@EXPORT_OK>, C<%EXPORT_TAGS> are filled from information from
+Rinci metadata, if they are empty. You don't get wrapping, renaming, etc. If
+Perinci::Exporter is like Sub::Exporter + Rinci, then Exporter::Rinci is like
+Exporter.pm + Rinci.
+
 =cut
