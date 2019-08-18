@@ -393,6 +393,16 @@ Importing:
 
  # XXX other per-import options
 
+ # import option: set prefix/suffix for all imports. the statement below will
+ # import foo_f1_bar and foo_f2_bar.
+ use YourModule 'f1', 'f2', -prefix=>'foo', -suffix=>'bar';
+
+ # import option: define behavior when an import clashes with existing symbol.
+ # the default is 'force' which, like Exporter, will force importing anyway
+ # without warning, overriding existing symbol. another option is to 'bail'
+ # (die).
+ use YourModule 'f1', 'f2', -on_clash=>'die';
+
 
 =head1 DESCRIPTION
 
