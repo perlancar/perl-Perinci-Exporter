@@ -2,8 +2,8 @@
 
 	- No functional changes.
 
-	- Skip tests that need Perinci::Sub::Wrapper as it's now an
-	  optional prereq [RT#130351].
+	- Make tests that need Perinci::Sub::Wrapper optional, as the prereq is
+	  now optional [RT#130351].
 
 
 0.082   2019-08-18  Released-By: PERLANCAR; Urgency: low
